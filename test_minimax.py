@@ -31,11 +31,15 @@ from llm_client import (
     ThinkingBlock,
     AzureTokenProvider,
     detect_provider,
+    create_doubao_client,
+    create_kimi_client,
 )
 
 MODEL = os.getenv("ANTHROPIC_MODEL", "MiniMax-M2.7-highspeed")
 MAX_TOKENS = 1024
 HAS_API = bool(os.environ.get("ANTHROPIC_AUTH_TOKEN"))
+HAS_DOUBAO = bool(os.environ.get("DOUBAO_API_KEY"))
+HAS_KIMI = bool(os.environ.get("KIMI_API_KEY"))
 
 
 # ─── Unit Tests (no API calls) ─────────────────────────────────────────
@@ -46,6 +50,8 @@ class TestModels:
         assert Provider.OPENAI == "openai"
         assert Provider.ANTHROPIC == "anthropic"
         assert Provider.AZURE == "azure"
+        assert Provider.DOUBAO == "doubao"
+        assert Provider.KIMI == "kimi"
 
     def test_detect_provider(self):
         assert detect_provider("claude-3-opus") == Provider.ANTHROPIC
@@ -57,6 +63,10 @@ class TestModels:
         assert detect_provider("o4-mini") == Provider.OPENAI
         assert detect_provider("MiniMax-M2.7") == Provider.ANTHROPIC
         assert detect_provider("minimax-01") == Provider.ANTHROPIC
+        assert detect_provider("doubao-pro") == Provider.DOUBAO
+        assert detect_provider("Doubao-1.5") == Provider.DOUBAO
+        assert detect_provider("kimi-k2.6") == Provider.KIMI
+        assert detect_provider("Kimi-latest") == Provider.KIMI
         assert detect_provider("unknown-model") == Provider.ANTHROPIC
 
     def test_llm_response(self):
@@ -532,32 +542,33 @@ class TestLLMClientManager:
         mgr = LLMClient()
         c1 = AnthropicClient(api_key="k1", model="claude-3")
         c2 = OpenAIClient(api_key="k2", model="gpt-4")
-        mgr.add_client("anthropic", c1, default=True)
-        mgr.add_client("openai", c2)
+        mgr.add_client(Provider.ANTHROPIC, c1, default=True)
+        mgr.add_client(Provider.OPENAI, c2)
         assert mgr.get_client() is c1
+        assert mgr.get_client(Provider.OPENAI) is c2
         assert mgr.get_client("openai") is c2
 
     def test_default_provider(self):
         mgr = LLMClient()
         c = OpenAIClient(api_key="k", model="gpt-4")
-        mgr.add_client("openai", c)
-        assert mgr.default_provider == "openai"
+        mgr.add_client(Provider.OPENAI, c)
+        assert mgr.default_provider == Provider.OPENAI
 
     def test_available_providers(self):
         mgr = LLMClient()
-        mgr.add_client("a", AnthropicClient(api_key="k", model="c"))
-        mgr.add_client("b", OpenAIClient(api_key="k", model="g"))
-        assert set(mgr.available_providers) == {"a", "b"}
+        mgr.add_client(Provider.ANTHROPIC, AnthropicClient(api_key="k", model="c"))
+        mgr.add_client(Provider.OPENAI, OpenAIClient(api_key="k", model="g"))
+        assert set(mgr.available_providers) == {Provider.ANTHROPIC, Provider.OPENAI}
 
     def test_remove_client(self):
         mgr = LLMClient()
         c1 = AnthropicClient(api_key="k", model="c")
         c2 = OpenAIClient(api_key="k", model="g")
-        mgr.add_client("a", c1, default=True)
-        mgr.add_client("b", c2)
-        mgr.remove_client("a")
-        assert "a" not in mgr.available_providers
-        assert mgr.default_provider == "b"
+        mgr.add_client(Provider.ANTHROPIC, c1, default=True)
+        mgr.add_client(Provider.OPENAI, c2)
+        mgr.remove_client(Provider.ANTHROPIC)
+        assert Provider.ANTHROPIC not in mgr.available_providers
+        assert mgr.default_provider == Provider.OPENAI
 
     def test_remove_nonexistent(self):
         mgr = LLMClient()
@@ -577,7 +588,7 @@ class TestLLMClientManager:
 
     def test_get_client_unknown_provider(self):
         mgr = LLMClient()
-        mgr.add_client("a", AnthropicClient(api_key="k", model="c"))
+        mgr.add_client(Provider.ANTHROPIC, AnthropicClient(api_key="k", model="c"))
         try:
             mgr.get_client("nonexistent")
             assert False
@@ -588,14 +599,33 @@ class TestLLMClientManager:
         mgr = LLMClient()
         c1 = AnthropicClient(api_key="k", model="c")
         c2 = OpenAIClient(api_key="k", model="g")
-        mgr.add_client("a", c1)
-        mgr.add_client("b", c2)
+        mgr.add_client(Provider.ANTHROPIC, c1)
+        mgr.add_client(Provider.OPENAI, c2)
         mgr.close()  # should not crash
 
     def test_first_client_auto_default(self):
         mgr = LLMClient()
-        mgr.add_client("first", OpenAIClient(api_key="k", model="g"))
-        assert mgr.default_provider == "first"
+        mgr.add_client(Provider.OPENAI, OpenAIClient(api_key="k", model="g"))
+        assert mgr.default_provider == Provider.OPENAI
+
+    def test_set_default_provider(self):
+        mgr = LLMClient()
+        mgr.add_client(Provider.ANTHROPIC, AnthropicClient(api_key="k", model="c"))
+        mgr.add_client(Provider.OPENAI, OpenAIClient(api_key="k", model="g"), default=True)
+        assert mgr.default_provider == Provider.OPENAI
+        mgr.set_default_provider(Provider.ANTHROPIC)
+        assert mgr.default_provider == Provider.ANTHROPIC
+        mgr.set_default_provider("openai")
+        assert mgr.default_provider == Provider.OPENAI
+
+    def test_set_default_provider_invalid(self):
+        mgr = LLMClient()
+        mgr.add_client(Provider.ANTHROPIC, AnthropicClient(api_key="k", model="c"))
+        try:
+            mgr.set_default_provider("not_a_provider")
+            assert False
+        except KeyError:
+            pass
 
     def test_no_httpx_in_manager(self):
         mgr = LLMClient()
@@ -802,8 +832,8 @@ def test_llm_client_manager():
         model=MODEL,
     )
     with LLMClient() as mgr:
-        mgr.add_client("anthropic", ant, default=True)
-        mgr.add_client("openai", oai)
+        mgr.add_client(Provider.ANTHROPIC, ant, default=True)
+        mgr.add_client(Provider.OPENAI, oai)
 
         resp1 = mgr.completion(
             messages=[Message(role="user", content="Say hi")],
@@ -814,7 +844,7 @@ def test_llm_client_manager():
         resp2 = mgr.completion(
             messages=[Message(role="user", content="Say hi")],
             max_tokens=MAX_TOKENS,
-            provider="openai",
+            provider=Provider.OPENAI,
         )
         print(f"  [openai] {resp2.content}")
         assert resp1.content and resp2.content
@@ -831,7 +861,7 @@ def test_llm_client_manager_stream():
         model=MODEL,
     )
     with LLMClient() as mgr:
-        mgr.add_client("anthropic", ant, default=True)
+        mgr.add_client(Provider.ANTHROPIC, ant, default=True)
         chunks = mgr.stream(
             messages=[Message(role="user", content="Say hi")],
             max_tokens=MAX_TOKENS,
@@ -941,6 +971,72 @@ asyncio.run(test())
     print()
 
 
+@run_if_api
+def test_doubao_completion():
+    if not HAS_DOUBAO:
+        print("=== Doubao completion === SKIP (no DOUBAO_API_KEY)")
+        return
+    print("=== Doubao completion ===")
+    with create_doubao_client() as client:
+        resp = client.completion(
+            messages=[Message(role="user", content="Say hello in one sentence.")],
+            max_tokens=MAX_TOKENS,
+        )
+        print(f"  Content: {resp.content}")
+        assert resp.content, "Empty response"
+        print("  PASS\n")
+
+
+@run_if_api
+def test_doubao_stream():
+    if not HAS_DOUBAO:
+        print("=== Doubao stream === SKIP (no DOUBAO_API_KEY)")
+        return
+    print("=== Doubao stream ===")
+    with create_doubao_client() as client:
+        chunks = client.stream(
+            messages=[Message(role="user", content="Count from 1 to 3.")],
+            max_tokens=MAX_TOKENS,
+        )
+        resp = client.collect_stream(chunks)
+        print(f"  Content: {resp.content}")
+        assert resp.content
+        print("  PASS\n")
+
+
+@run_if_api
+def test_kimi_completion():
+    if not HAS_KIMI:
+        print("=== Kimi completion === SKIP (no KIMI_API_KEY)")
+        return
+    print("=== Kimi completion ===")
+    with create_kimi_client() as client:
+        resp = client.completion(
+            messages=[Message(role="user", content="Say hello in one sentence.")],
+            max_tokens=MAX_TOKENS,
+        )
+        print(f"  Content: {resp.content}")
+        assert resp.content, "Empty response"
+        print("  PASS\n")
+
+
+@run_if_api
+def test_kimi_stream():
+    if not HAS_KIMI:
+        print("=== Kimi stream === SKIP (no KIMI_API_KEY)")
+        return
+    print("=== Kimi stream ===")
+    with create_kimi_client() as client:
+        chunks = client.stream(
+            messages=[Message(role="user", content="Count from 1 to 3.")],
+            max_tokens=MAX_TOKENS,
+        )
+        resp = client.collect_stream(chunks)
+        print(f"  Content: {resp.content}")
+        assert resp.content
+        print("  PASS\n")
+
+
 # ─── Runner ─────────────────────────────────────────────────────────────
 
 
@@ -997,6 +1093,10 @@ def run_integration_tests():
         test_async_completion,
         test_async_stream,
         test_async_openai_completion,
+        test_doubao_completion,
+        test_doubao_stream,
+        test_kimi_completion,
+        test_kimi_stream,
     ]
 
     total = len(tests)

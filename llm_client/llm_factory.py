@@ -61,6 +61,36 @@ def create_azure_client(
     )
 
 
+def create_doubao_client(
+    api_key: Optional[str] = None,
+    base_url: Optional[str] = None,
+    model: Optional[str] = None,
+    timeout: float = 300.0,
+) -> AnthropicClient:
+    return AnthropicClient(
+        api_key=api_key or os.environ["DOUBAO_API_KEY"],
+        base_url=base_url or os.environ.get("DOUBAO_ENDPOINT"),
+        model=model or os.environ.get("DOUBAO_MODEL"),
+        auth_mode="bearer",
+        timeout=timeout,
+    )
+
+
+def create_kimi_client(
+    api_key: Optional[str] = None,
+    base_url: Optional[str] = None,
+    model: Optional[str] = None,
+    timeout: float = 300.0,
+) -> AnthropicClient:
+    return AnthropicClient(
+        api_key=api_key or os.environ["KIMI_API_KEY"],
+        base_url=base_url or os.environ.get("KIMI_ENDPOINT"),
+        model=model or os.environ.get("KIMI_MODEL", "kimi-k2.6"),
+        auth_mode="bearer",
+        timeout=timeout,
+    )
+
+
 def create_llm_client(
     default_provider: Optional[Union[Provider, str]] = None,
     timeout: float = 300.0,
@@ -74,6 +104,10 @@ def create_llm_client(
         llm.add_client(Provider.OPENAI, create_openai_client(timeout=timeout), default=True)
     elif provider == Provider.AZURE:
         llm.add_client(Provider.AZURE, create_azure_client(timeout=timeout), default=True)
+    elif provider == Provider.DOUBAO:
+        llm.add_client(Provider.DOUBAO, create_doubao_client(timeout=timeout), default=True)
+    elif provider == Provider.KIMI:
+        llm.add_client(Provider.KIMI, create_kimi_client(timeout=timeout), default=True)
     else:
         raise ValueError(f"Unknown provider: {provider}. Supported: {[p.value for p in Provider]}")
 

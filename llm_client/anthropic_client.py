@@ -260,10 +260,11 @@ class AnthropicClient(BaseLLMClient):
         with self._http.stream("POST", url, headers=self._headers(), json=body) as resp:
             resp.raise_for_status()
             for line in resp.iter_lines():
-                if not line or not line.startswith("data: "):
+                if not line or not line.startswith("data:"):
                     continue
+                payload = line[5:] if line.startswith("data: ") else line[5:].lstrip()
                 try:
-                    event = json.loads(line[6:])
+                    event = json.loads(payload)
                 except json.JSONDecodeError:
                     continue
                 chunks, current_tool, current_tool_index = self._parse_stream_event(
@@ -296,10 +297,11 @@ class AnthropicClient(BaseLLMClient):
         async with self._ahttp.stream("POST", url, headers=self._headers(), json=body) as resp:
             resp.raise_for_status()
             async for line in resp.aiter_lines():
-                if not line or not line.startswith("data: "):
+                if not line or not line.startswith("data:"):
                     continue
+                payload = line[5:] if line.startswith("data: ") else line[5:].lstrip()
                 try:
-                    event = json.loads(line[6:])
+                    event = json.loads(payload)
                 except json.JSONDecodeError:
                     continue
                 chunks, current_tool, current_tool_index = self._parse_stream_event(

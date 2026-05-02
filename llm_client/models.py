@@ -11,6 +11,8 @@ class Provider(str, Enum):
     OPENAI = "openai"
     ANTHROPIC = "anthropic"
     AZURE = "azure"
+    DOUBAO = "doubao"
+    KIMI = "kimi"
 
 
 class ToolUse(BaseModel):
@@ -74,6 +76,10 @@ def detect_provider(model: str) -> Provider:
         return Provider.ANTHROPIC
     if "minimax" in model.lower():
         return Provider.ANTHROPIC
+    if "doubao" in model.lower():
+        return Provider.DOUBAO
+    if "kimi" in model.lower():
+        return Provider.KIMI
     model_lower = model.strip().lower()
     if model_lower.startswith(("gpt-", "o1", "o3", "o4")):
         return Provider.OPENAI
