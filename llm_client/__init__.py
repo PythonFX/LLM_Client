@@ -14,7 +14,7 @@ from .base import BaseLLMClient
 from .openai_client import OpenAIClient
 from .azure_client import AzureClient
 from .anthropic_client import AnthropicClient
-from .llm_manager import LLMClient
+from .llm_client import LLMClient
 
 __all__ = [
     "AzureClient",
