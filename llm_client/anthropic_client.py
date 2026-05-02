@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from typing import Any, AsyncIterator, Dict, Iterator, List, Optional
 
+import httpx
+
 from .base import BaseLLMClient
 from .models import LLMResponse, Message, StreamChunk, StreamEvent, ToolDef, ToolUse
 
@@ -16,10 +18,12 @@ class AnthropicClient(BaseLLMClient):
         model: Optional[str] = None,
         timeout: float = 300.0,
     ) -> None:
-        super().__init__(model=model, timeout=timeout)
+        super().__init__(model=model)
         self._api_key = api_key
         self._base_url = base_url or "https://api.anthropic.com"
         self._auth_mode = auth_mode
+        self._http = httpx.Client(timeout=timeout)
+        self._ahttp = httpx.AsyncClient(timeout=timeout)
 
     def _headers(self) -> Dict[str, str]:
         headers: Dict[str, str] = {"Content-Type": "application/json"}

@@ -82,8 +82,8 @@ class LLMClient(BaseLLMClient):
         **kwargs: Any,
     ) -> Iterator[StreamChunk]:
         client = self.get_client(provider)
-        return client.stream(messages, model=model, system=system, tools=tools,
-                             max_tokens=max_tokens, temperature=temperature, **kwargs)
+        yield from client.stream(messages, model=model, system=system, tools=tools,
+                                 max_tokens=max_tokens, temperature=temperature, **kwargs)
 
     async def async_stream(
         self,

@@ -4,6 +4,8 @@ import threading
 import time
 from typing import Any, AsyncIterator, Awaitable, Callable, Dict, Iterator, List, Optional, Union
 
+import httpx
+
 from .base import BaseLLMClient
 from .models import AzureTokenProvider, LLMResponse, Message, StreamChunk, StreamEvent, ToolDef, ToolUse
 from .openai_client import OpenAIClient
@@ -21,7 +23,7 @@ class AzureClient(BaseLLMClient):
         model: Optional[str] = None,
         timeout: float = 300.0,
     ) -> None:
-        super().__init__(model=model or f"azure/{deployment}", timeout=timeout)
+        super().__init__(model=model or f"azure/{deployment}")
         self._deployment = deployment
         self._endpoint = endpoint.rstrip("/")
         self._api_version = api_version
@@ -31,6 +33,8 @@ class AzureClient(BaseLLMClient):
         self._cached_ad_token: str = ""
         self._cached_ad_token_at: float = 0.0
         self._token_lock = threading.Lock()
+        self._http = httpx.Client(timeout=timeout)
+        self._ahttp = httpx.AsyncClient(timeout=timeout)
 
     def _is_ad_token_expired(self) -> bool:
         if not self._cached_ad_token:

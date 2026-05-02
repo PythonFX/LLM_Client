@@ -3,16 +3,12 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any, AsyncIterator, Iterator, List, Optional
 
-import httpx
-
 from .models import LLMResponse, Message, StreamChunk, ToolDef
 
 
 class BaseLLMClient(ABC):
-    def __init__(self, model: Optional[str] = None, timeout: float = 300.0) -> None:
+    def __init__(self, model: Optional[str] = None) -> None:
         self._default_model = model
-        self._http = httpx.Client(timeout=timeout)
-        self._ahttp = httpx.AsyncClient(timeout=timeout)
 
     @abstractmethod
     def completion(
@@ -133,10 +129,12 @@ class BaseLLMClient(ABC):
         )
 
     def close(self) -> None:
-        self._http.close()
+        if hasattr(self, "_http"):
+            self._http.close()
 
     async def aclose(self) -> None:
-        await self._ahttp.aclose()
+        if hasattr(self, "_ahttp"):
+            await self._ahttp.aclose()
 
     def __enter__(self) -> BaseLLMClient:
         return self
