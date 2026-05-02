@@ -15,6 +15,7 @@ from .openai_client import OpenAIClient
 from .azure_client import AzureClient
 from .anthropic_client import AnthropicClient
 from .llm_client import LLMClient
+from .llm_factory import create_anthropic_client, create_azure_client, create_llm_client, create_openai_client
 
 __all__ = [
     "AzureClient",
@@ -32,4 +33,8 @@ __all__ = [
     "ToolDef",
     "ToolUse",
     "detect_provider",
+    "create_anthropic_client",
+    "create_azure_client",
+    "create_llm_client",
+    "create_openai_client",
 ]
