@@ -1,11 +1,11 @@
 import os
-from typing import Optional
+from typing import Optional, Union
 
 from dotenv import load_dotenv
 from pathlib import Path
 
 from . import AnthropicClient, AzureClient, LLMClient, OpenAIClient
-from .models import AzureTokenProvider
+from .models import AzureTokenProvider, Provider
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
 load_dotenv(_PROJECT_ROOT / ".env", override=False)
@@ -62,19 +62,19 @@ def create_azure_client(
 
 
 def create_llm_client(
-    default_provider: Optional[str] = None,
+    default_provider: Optional[Union[Provider, str]] = None,
     timeout: float = 300.0,
 ) -> LLMClient:
-    provider = default_provider or os.environ.get("DEFAULT_LLM_PROVIDER", "anthropic")
+    provider = default_provider or Provider(os.environ.get("DEFAULT_LLM_PROVIDER", "anthropic"))
     llm = LLMClient(default_provider=provider)
 
-    if provider == "anthropic":
-        llm.add_client("anthropic", create_anthropic_client(timeout=timeout), default=True)
-    elif provider == "openai":
-        llm.add_client("openai", create_openai_client(timeout=timeout), default=True)
-    elif provider == "azure":
-        llm.add_client("azure", create_azure_client(timeout=timeout), default=True)
+    if provider == Provider.ANTHROPIC:
+        llm.add_client(Provider.ANTHROPIC, create_anthropic_client(timeout=timeout), default=True)
+    elif provider == Provider.OPENAI:
+        llm.add_client(Provider.OPENAI, create_openai_client(timeout=timeout), default=True)
+    elif provider == Provider.AZURE:
+        llm.add_client(Provider.AZURE, create_azure_client(timeout=timeout), default=True)
     else:
-        raise ValueError(f"Unknown provider: {provider}. Supported: anthropic, openai, azure")
+        raise ValueError(f"Unknown provider: {provider}. Supported: {[p.value for p in Provider]}")
 
     return llm
