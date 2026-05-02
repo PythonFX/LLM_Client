@@ -1,3 +1,5 @@
+.env
+
 state/
 
 __pycache__/

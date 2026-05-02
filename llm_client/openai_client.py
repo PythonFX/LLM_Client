@@ -17,7 +17,7 @@ class OpenAIClient(BaseLLMClient):
     ) -> None:
         super().__init__(model=model, timeout=timeout)
         self._api_key = api_key
-        self._base_url = base_url or "https://api.openai.com"
+        self._base_url = (base_url or "https://api.openai.com/v1").rstrip("/")
 
     def _headers(self) -> Dict[str, str]:
         return {
@@ -217,7 +217,7 @@ class OpenAIClient(BaseLLMClient):
         if not model:
             raise ValueError("model must be provided either at init or per-call")
 
-        url = f"{self._base_url}/v1/chat/completions"
+        url = f"{self._base_url}/chat/completions"
         body = self._build_body(model, messages, system, tools, max_tokens, temperature, False, **kwargs)
 
         resp = self._http.post(url, headers=self._headers(), json=body)
@@ -238,7 +238,7 @@ class OpenAIClient(BaseLLMClient):
         if not model:
             raise ValueError("model must be provided either at init or per-call")
 
-        url = f"{self._base_url}/v1/chat/completions"
+        url = f"{self._base_url}/chat/completions"
         body = self._build_body(model, messages, system, tools, max_tokens, temperature, False, **kwargs)
 
         resp = await self._ahttp.post(url, headers=self._headers(), json=body)
@@ -259,7 +259,7 @@ class OpenAIClient(BaseLLMClient):
         if not model:
             raise ValueError("model must be provided either at init or per-call")
 
-        url = f"{self._base_url}/v1/chat/completions"
+        url = f"{self._base_url}/chat/completions"
         body = self._build_body(model, messages, system, tools, max_tokens, temperature, True, **kwargs)
         current_tools: Dict[int, Dict[str, Any]] = {}
 
@@ -285,7 +285,7 @@ class OpenAIClient(BaseLLMClient):
         if not model:
             raise ValueError("model must be provided either at init or per-call")
 
-        url = f"{self._base_url}/v1/chat/completions"
+        url = f"{self._base_url}/chat/completions"
         body = self._build_body(model, messages, system, tools, max_tokens, temperature, True, **kwargs)
         current_tools: Dict[int, Dict[str, Any]] = {}
 

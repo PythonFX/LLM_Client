@@ -6,7 +6,7 @@ from .base import BaseLLMClient
 from .models import LLMResponse, Message, Provider, StreamChunk, ToolDef
 
 
-class LLMManager(BaseLLMClient):
+class LLMClient(BaseLLMClient):
     def __init__(self, default_provider: Optional[str] = None) -> None:
         super().__init__()
         self._clients: Dict[str, BaseLLMClient] = {}
@@ -97,8 +97,9 @@ class LLMManager(BaseLLMClient):
         **kwargs: Any,
     ) -> AsyncIterator[StreamChunk]:
         client = self.get_client(provider)
-        return client.async_stream(messages, model=model, system=system, tools=tools,
-                                   max_tokens=max_tokens, temperature=temperature, **kwargs)
+        async for chunk in client.async_stream(messages, model=model, system=system, tools=tools,
+                                               max_tokens=max_tokens, temperature=temperature, **kwargs):
+            yield chunk
 
     def close(self) -> None:
         for client in self._clients.values():
