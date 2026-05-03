@@ -20,10 +20,9 @@ class AzureClient(BaseLLMClient):
         api_key: Optional[str] = None,
         ad_token_provider: Optional[AzureTokenProvider] = None,
         ad_token_ttl: float = 1800.0,
-        model: Optional[str] = None,
         timeout: float = 300.0,
     ) -> None:
-        super().__init__(model=model or f"azure/{deployment}")
+        super().__init__(model=deployment or f"azure/{deployment}")
         self._deployment = deployment
         self._endpoint = endpoint.rstrip("/")
         self._api_version = api_version
@@ -94,7 +93,7 @@ class AzureClient(BaseLLMClient):
         if not dep:
             raise ValueError("azure_deployment must be provided either at init or per-call")
         return (
-            f"{self._endpoint}/deployments/{dep}"
+            f"{self._endpoint}/openai/deployments/{dep}"
             f"/chat/completions?api-version={self._api_version}"
         )
 

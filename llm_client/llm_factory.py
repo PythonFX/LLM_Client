@@ -56,7 +56,6 @@ def create_azure_client(
         api_version=api_version or os.environ.get("AZURE_OPENAI_API_VERSION", "2024-06-01"),
         api_key=api_key or os.environ.get("AZURE_OPENAI_API_KEY"),
         ad_token_provider=ad_token_provider,
-        model=model_version or os.environ.get("AZURE_OPENAI_MODEL_VERSION"),
         timeout=timeout,
     )
 
