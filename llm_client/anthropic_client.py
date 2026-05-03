@@ -16,12 +16,14 @@ class AnthropicClient(BaseLLMClient):
         base_url: Optional[str] = None,
         auth_mode: str = "x-api-key",
         model: Optional[str] = None,
+        thinking: Optional[Dict[str, Any]] = None,
         timeout: float = 300.0,
     ) -> None:
         super().__init__(model=model)
         self._api_key = api_key
         self._base_url = base_url or "https://api.anthropic.com"
         self._auth_mode = auth_mode
+        self._thinking = thinking
         self._http = httpx.Client(timeout=timeout)
         self._ahttp = httpx.AsyncClient(timeout=timeout)
 
@@ -133,6 +135,8 @@ class AnthropicClient(BaseLLMClient):
         ant_tools = self._build_tools(tools)
         if ant_tools:
             body["tools"] = ant_tools
+        if self._thinking:
+            body["thinking"] = self._thinking
         body.update(kwargs)
         return body
 

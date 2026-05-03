@@ -80,13 +80,16 @@ def create_kimi_client(
     api_key: Optional[str] = None,
     base_url: Optional[str] = None,
     model: Optional[str] = None,
+    thinking: bool = True,
     timeout: float = 300.0,
 ) -> AnthropicClient:
+    thinking_config = {"type": "enabled", "budget_tokens": 10000} if thinking else None
     return AnthropicClient(
         api_key=api_key or os.environ["KIMI_API_KEY"],
         base_url=base_url or os.environ.get("KIMI_ENDPOINT"),
         model=model or os.environ.get("KIMI_MODEL", "kimi-k2.6"),
         auth_mode="bearer",
+        thinking=thinking_config,
         timeout=timeout,
     )
 
