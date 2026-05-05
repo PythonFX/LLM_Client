@@ -5,7 +5,7 @@ from typing import Any, Dict, Optional, Union
 import yaml
 from dotenv import load_dotenv
 
-from . import AnthropicClient, AzureClient, LLMClient, OpenAIClient
+from . import AnthropicClient, AzureClient, LLMClient, MlxClient, OpenAIClient
 from .base import BaseLLMClient
 from .models import AzureTokenProvider, Provider
 
@@ -189,6 +189,11 @@ def _create_client_from_profile(
             auth_mode=profile.get("auth_mode", "bearer"),
             thinking=profile.get("thinking"),
             timeout=timeout,
+        )
+    elif provider == "mlx":
+        return MlxClient(
+            model_path=profile["model_path"],
+            enable_thinking=profile.get("enable_thinking", True),
         )
     else:
         raise ValueError(f"Unknown provider in profile: {provider}")

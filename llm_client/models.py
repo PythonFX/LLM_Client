@@ -13,6 +13,7 @@ class Provider(str, Enum):
     AZURE = "azure"
     DOUBAO = "doubao"
     KIMI = "kimi"
+    MLX = "mlx"
 
 
 class ToolUse(BaseModel):
