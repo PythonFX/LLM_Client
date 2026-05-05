@@ -6,56 +6,57 @@ from .base import BaseLLMClient
 from .models import LLMResponse, Message, Provider, StreamChunk, ToolDef
 
 
-def _to_provider(value: Union[Provider, str]) -> Provider:
+def _resolve_key(value: Union[Provider, str]) -> str:
     if isinstance(value, Provider):
-        return value
-    try:
-        return Provider(value)
-    except ValueError:
-        raise KeyError(f"'{value}' is not a valid Provider. Valid: {[p.value for p in Provider]}")
+        return value.value
+    return str(value)
 
 
 class LLMClient(BaseLLMClient):
     def __init__(self, default_provider: Optional[Union[Provider, str]] = None) -> None:
         super().__init__()
-        self._clients: Dict[Provider, BaseLLMClient] = {}
-        self._default_provider: Optional[Provider] = _to_provider(default_provider) if default_provider else None
+        self._clients: Dict[str, BaseLLMClient] = {}
+        self._default_provider: Optional[str] = _resolve_key(default_provider) if default_provider else None
 
-    def add_client(self, provider: Union[Provider, str], client: BaseLLMClient, default: bool = False) -> None:
-        p = _to_provider(provider)
-        self._clients[p] = client
+    def add_client(self, name: Union[Provider, str], client: BaseLLMClient, default: bool = False) -> None:
+        key = _resolve_key(name)
+        self._clients[key] = client
         if default or not self._default_provider:
-            self._default_provider = p
+            self._default_provider = key
 
-    def remove_client(self, provider: Union[Provider, str]) -> None:
-        p = _to_provider(provider)
-        if p not in self._clients:
-            raise KeyError(f"Client '{p.value}' not found")
-        del self._clients[p]
-        if self._default_provider == p:
+    def remove_client(self, name: Union[Provider, str]) -> None:
+        key = _resolve_key(name)
+        if key not in self._clients:
+            raise KeyError(f"Client '{key}' not found")
+        del self._clients[key]
+        if self._default_provider == key:
             self._default_provider = next(iter(self._clients), None)
 
-    def get_client(self, provider: Optional[Union[Provider, str]] = None) -> BaseLLMClient:
-        p = _to_provider(provider) if provider else self._default_provider
-        if not p:
+    def get_client(self, name: Optional[Union[Provider, str]] = None) -> BaseLLMClient:
+        key = _resolve_key(name) if name else self._default_provider
+        if not key:
             raise ValueError("No LLM client registered. Use add_client() first.")
-        if p not in self._clients:
-            raise KeyError(f"Client '{p.value}' not found. Available: {[p.value for p in self._clients]}")
-        return self._clients[p]
+        if key not in self._clients:
+            raise KeyError(f"Client '{key}' not found. Available: {list(self._clients.keys())}")
+        return self._clients[key]
 
     @property
-    def default_provider(self) -> Optional[Provider]:
+    def default_provider(self) -> Optional[str]:
         return self._default_provider
 
-    def set_default_provider(self, provider: Union[Provider, str]) -> None:
-        p = _to_provider(provider)
-        if p not in self._clients:
-            raise KeyError(f"Client '{p.value}' not found. Available: {[p.value for p in self._clients]}")
-        self._default_provider = p
+    def set_default_provider(self, name: Union[Provider, str]) -> None:
+        key = _resolve_key(name)
+        if key not in self._clients:
+            raise KeyError(f"Client '{key}' not found. Available: {list(self._clients.keys())}")
+        self._default_provider = key
+
+    @property
+    def available_profiles(self) -> List[str]:
+        return list(self._clients.keys())
 
     @property
     def available_providers(self) -> List[str]:
-        return list(self._clients.keys())
+        return self.available_profiles
 
     def completion(
         self,

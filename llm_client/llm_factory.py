@@ -1,10 +1,12 @@
 import os
-from typing import Optional, Union
-
-from dotenv import load_dotenv
 from pathlib import Path
+from typing import Any, Dict, Optional, Union
+
+import yaml
+from dotenv import load_dotenv
 
 from . import AnthropicClient, AzureClient, LLMClient, OpenAIClient
+from .base import BaseLLMClient
 from .models import AzureTokenProvider, Provider
 
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -114,3 +116,79 @@ def create_llm_client(
         raise ValueError(f"Unknown provider: {provider}. Supported: {[p.value for p in Provider]}")
 
     return llm
+
+
+def create_from_profiles(
+    config_path: Optional[str] = None,
+    default: Optional[str] = None,
+    timeout: float = 300.0,
+) -> LLMClient:
+    path = Path(config_path) if config_path else Path.home() / ".llm_client_models.yaml"
+    if not path.exists():
+        raise FileNotFoundError(f"Config file not found: {path}")
+
+    with open(path) as f:
+        config: Dict[str, Any] = yaml.safe_load(f)
+
+    profiles = config.get("profiles", {})
+    if not profiles:
+        raise ValueError("No profiles defined in config file")
+
+    default_name = default or config.get("default")
+    llm = LLMClient()
+
+    for name, profile in profiles.items():
+        provider = profile.get("provider", "")
+        client = _create_client_from_profile(provider, profile, timeout)
+        is_default = name == default_name
+        llm.add_client(name, client, default=is_default)
+
+    if not llm.default_provider:
+        llm.set_default_provider(next(iter(profiles)))
+
+    return llm
+
+
+def _create_client_from_profile(
+    provider: str,
+    profile: Dict[str, Any],
+    timeout: float,
+) -> BaseLLMClient:
+    if provider == "openai":
+        return OpenAIClient(
+            api_key=profile["api_key"],
+            base_url=profile.get("base_url"),
+            model=profile.get("model"),
+            timeout=timeout,
+        )
+    elif provider == "anthropic":
+        return AnthropicClient(
+            api_key=profile["api_key"],
+            base_url=profile.get("base_url"),
+            model=profile.get("model"),
+            auth_mode=profile.get("auth_mode", "x-api-key"),
+            thinking=profile.get("thinking"),
+            timeout=timeout,
+        )
+    elif provider == "azure":
+        from .llm_helper import get_azure_ad_token
+
+        return AzureClient(
+            deployment=profile["deployment"],
+            endpoint=profile["endpoint"],
+            api_version=profile.get("api_version", "2024-06-01"),
+            api_key=profile.get("api_key"),
+            ad_token_provider=get_azure_ad_token,
+            timeout=timeout,
+        )
+    elif provider in ("doubao", "kimi"):
+        return AnthropicClient(
+            api_key=profile["api_key"],
+            base_url=profile.get("base_url"),
+            model=profile.get("model"),
+            auth_mode=profile.get("auth_mode", "bearer"),
+            thinking=profile.get("thinking"),
+            timeout=timeout,
+        )
+    else:
+        raise ValueError(f"Unknown provider in profile: {provider}")
