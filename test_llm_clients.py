@@ -34,6 +34,7 @@ from llm_client import (
     create_openai_client,
     create_doubao_client,
     create_kimi_client,
+    create_mlx_client,
     create_from_profiles,
 )
 
@@ -1062,7 +1063,7 @@ def test_mlx_completion():
         print("=== MLX completion === SKIP (model not found)")
         return
     print("=== MLX completion ===")
-    with MlxClient(model_path=TestMlxClient.MODEL_PATH) as client:
+    with create_mlx_client(profile_name="gemma4-e4b") as client:
         resp = client.completion(
             messages=[Message(role="user", content="Say hello in one sentence.")],
             max_tokens=MAX_TOKENS,
@@ -1081,7 +1082,7 @@ def test_mlx_completion_with_system():
         print("=== MLX completion with system === SKIP (model not found)")
         return
     print("=== MLX completion with system ===")
-    with MlxClient(model_path=TestMlxClient.MODEL_PATH) as client:
+    with create_mlx_client(profile_name="gemma4-e4b") as client:
         resp = client.completion(
             messages=[Message(role="user", content="What is your name?")],
             system="You are a helpful assistant named Bot.",
@@ -1098,9 +1099,9 @@ def test_mlx_stream():
         print("=== MLX stream === SKIP (model not found)")
         return
     print("=== MLX stream ===")
-    with MlxClient(model_path=TestMlxClient.MODEL_PATH) as client:
+    with create_mlx_client(profile_name="gemma4-e4b") as client:
         chunks = client.stream(
-            messages=[Message(role="user", content="Count from 1 to 3.")],
+            messages=[Message(role="user", content="who is the president of USA?")],
             max_tokens=MAX_TOKENS,
         )
         resp = client.collect_stream(chunks)
@@ -1116,7 +1117,7 @@ def test_mlx_no_thinking():
         print("=== MLX no thinking === SKIP (model not found)")
         return
     print("=== MLX no thinking ===")
-    with MlxClient(model_path=TestMlxClient.MODEL_PATH, enable_thinking=False) as client:
+    with create_mlx_client(profile_name="gemma4-e4b", enable_thinking=False) as client:
         resp = client.completion(
             messages=[Message(role="user", content="Say hello.")],
             max_tokens=MAX_TOKENS,
@@ -1151,7 +1152,7 @@ def test_mlx_async_completion():
     print("=== MLX async completion ===")
 
     async def run():
-        async with MlxClient(model_path=TestMlxClient.MODEL_PATH) as client:
+        async with create_mlx_client(profile_name="gemma4-e4b") as client:
             resp = await client.async_completion(
                 messages=[Message(role="user", content="Say hello.")],
                 max_tokens=MAX_TOKENS,

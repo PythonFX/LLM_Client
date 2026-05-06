@@ -16,7 +16,7 @@ from .azure_client import AzureClient
 from .anthropic_client import AnthropicClient
 from .mlx_client import MlxClient
 from .llm_client import LLMClient
-from .llm_factory import create_anthropic_client, create_azure_client, create_doubao_client, create_from_profiles, create_kimi_client, create_llm_client, create_openai_client, get_config, get_profile
+from .llm_factory import create_anthropic_client, create_azure_client, create_doubao_client, create_from_profiles, create_kimi_client, create_llm_client, create_mlx_client, create_openai_client, get_config, get_profile
 
 __all__ = [
     "AzureClient",
@@ -41,6 +41,7 @@ __all__ = [
     "create_from_profiles",
     "create_kimi_client",
     "create_llm_client",
+    "create_mlx_client",
     "create_openai_client",
     "get_config",
     "get_profile",

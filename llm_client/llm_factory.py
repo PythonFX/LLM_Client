@@ -145,6 +145,17 @@ def create_kimi_client(
     )
 
 
+def create_mlx_client(
+    profile_name: str = "gemma4-e4b",
+    **overrides: Any,
+) -> MlxClient:
+    p = get_profile(profile_name) | overrides
+    return MlxClient(
+        model_path=p["model_path"],
+        enable_thinking=p.get("enable_thinking", True),
+    )
+
+
 def create_llm_client(
     default_provider: Optional[Union[Provider, str]] = None,
     timeout: float = 300.0,
@@ -163,6 +174,8 @@ def create_llm_client(
         llm.add_client(Provider.DOUBAO, create_doubao_client(timeout=timeout), default=True)
     elif provider == Provider.KIMI:
         llm.add_client(Provider.KIMI, create_kimi_client(timeout=timeout), default=True)
+    elif provider == Provider.MLX:
+        llm.add_client(Provider.MLX, create_mlx_client(), default=True)
     else:
         raise ValueError(f"Unknown provider: {provider}. Supported: {[p.value for p in Provider]}")
 
