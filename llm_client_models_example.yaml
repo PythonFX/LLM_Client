@@ -13,12 +13,24 @@ profiles:
     api_key: api_key
     model: MiniMax-M2.7-highspeed
 
-  azure-gpt51:
+  azure-openai-ad-token:
     provider: azure
-    endpoint: AZURE_OPENAI_ENDPOINT
+    endpoint: https://your-resource.openai.azure.com
     deployment: gpt-5.1
     api_version: 2025-04-01-preview
-    model_version: 2025-11-13
+    token_url: https://login.microsoftonline.com/your-tenant/oauth2/v2.0/token
+    client_id: your-client-id
+    client_secret: your-client-secret
+    proxy_url: your-proxy-host
+    proxy_user: your-proxy-user
+    proxy_password: your-proxy-password
+
+  azure-openai:
+    provider: azure
+    endpoint: https://your-resource.openai.azure.com
+    deployment: gpt-4o
+    api_version: 2025-04-01-preview
+    api_key: your-azure-api-key
 
   doubao-glm:
     provider: doubao

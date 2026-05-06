@@ -1,29 +1,26 @@
 import httpx
-import os
-from pathlib import Path
-from dotenv import load_dotenv
 
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent
-load_dotenv(_PROJECT_ROOT / ".env", override=False)
+from .llm_factory import get_profile
 
 
-def get_azure_ad_token() -> str:
-    staff_id = os.environ.get('STAFF_ID')
-    staff_pw = os.environ.get('STAFF_PW')
-    proxy_url = os.environ.get('AZURE_PROXY_URL')
+def get_azure_ad_token(profile_name: str = "azure") -> str:
+    p = get_profile(profile_name)
 
-    proxy = f"http://{staff_id}:{staff_pw}@{proxy_url}" if proxy_url else None
+    proxy_url = p.get("proxy_url")
+    proxy_user = p.get("proxy_user")
+    proxy_password = p.get("proxy_password")
+    proxy = f"http://{proxy_user}:{proxy_password}@{proxy_url}" if proxy_url else None
 
-    token_url = os.environ.get("AZURE_TOKEN_URL")
-    client_id = os.environ.get('AZURE_CLIENT_ID')
-    client_secret = os.environ.get('AZURE_CLIENT_SECRET')
+    token_url = p.get("token_url")
+    client_id = p.get("client_id")
+    client_secret = p.get("client_secret")
     scope = "https://cognitiveservices.azure.com/.default"
 
     data = {
         "grant_type": "client_credentials",
         "client_id": client_id,
         "client_secret": client_secret,
-        "scope": scope
+        "scope": scope,
     }
 
     try:
@@ -40,4 +37,3 @@ def get_azure_ad_token() -> str:
     except Exception as e:
         print(str(e))
         return ""
-    

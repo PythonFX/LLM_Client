@@ -67,19 +67,44 @@ def create_openai_client(
 
 
 def create_azure_client(
-    profile_name: str = "azure",
+    profile_name: str = "azure-openai",
     timeout: float = 300.0,
     **overrides: Any,
 ) -> AzureClient:
+    p = get_profile(profile_name) | overrides
+
+    if p.get("api_key"):
+        return AzureClient(
+            deployment=p["deployment"],
+            endpoint=p["endpoint"],
+            api_version=p.get("api_version", "2024-06-01"),
+            api_key=p["api_key"],
+            timeout=timeout,
+        )
+
     from .llm_helper import get_azure_ad_token
 
-    p = get_profile(profile_name) | overrides
     return AzureClient(
         deployment=p["deployment"],
         endpoint=p["endpoint"],
         api_version=p.get("api_version", "2024-06-01"),
-        api_key=p.get("api_key"),
-        ad_token_provider=get_azure_ad_token,
+        ad_token_provider=lambda: get_azure_ad_token(profile_name),
+        timeout=timeout,
+    )
+
+
+def create_azure_client_ad_token(
+    profile_name: str = "azure-openai-ad-token",
+    timeout: float = 300.0,
+    **overrides: Any,
+) -> AzureClient:
+    p = get_profile(profile_name) | overrides
+    from .llm_helper import get_azure_ad_token
+    return AzureClient(
+        deployment=p["deployment"],
+        endpoint=p["endpoint"],
+        api_version=p.get("api_version", "2024-06-01"),
+        ad_token_provider=lambda: get_azure_ad_token(profile_name),
         timeout=timeout,
     )
 
@@ -160,6 +185,7 @@ def create_from_profiles(
 
     for name, profile in profiles.items():
         provider = profile.get("provider", "")
+        profile["_name"] = name
         client = _create_client_from_profile(provider, profile, timeout)
         is_default = name == default_name
         llm.add_client(name, client, default=is_default)
@@ -192,14 +218,23 @@ def _create_client_from_profile(
             timeout=timeout,
         )
     elif provider == "azure":
+        if profile.get("api_key"):
+            return AzureClient(
+                deployment=profile["deployment"],
+                endpoint=profile["endpoint"],
+                api_version=profile.get("api_version", "2024-06-01"),
+                api_key=profile["api_key"],
+                timeout=timeout,
+            )
+
         from .llm_helper import get_azure_ad_token
 
+        profile_name = profile.get("_name", "azure")
         return AzureClient(
             deployment=profile["deployment"],
             endpoint=profile["endpoint"],
             api_version=profile.get("api_version", "2024-06-01"),
-            api_key=profile.get("api_key"),
-            ad_token_provider=get_azure_ad_token,
+            ad_token_provider=lambda pn=profile_name: get_azure_ad_token(pn),
             timeout=timeout,
         )
     elif provider in ("doubao", "kimi"):
