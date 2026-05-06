@@ -7,12 +7,16 @@ from functools import partial
 from pathlib import Path
 from typing import Any, AsyncIterator, Iterator, List, Optional
 
+from mlx_lm.sample_utils import make_sampler
+
 from .base import BaseLLMClient
 from .models import LLMResponse, Message, StreamChunk, StreamEvent, ToolDef
 
 THINK_START = "<|channel>thought"
 THINK_END = "<channel|>"
 CONTROL_TOKENS_RE = re.compile(r"<\|?turn\|?>")
+DEFAULT_TEMPERATURE = 0.2
+MAX_TOKEN = 8192
 
 
 class MlxClient(BaseLLMClient):
@@ -36,8 +40,8 @@ class MlxClient(BaseLLMClient):
                 return
             from mlx_lm.utils import load_model, load_tokenizer
 
-            self._model, _ = load_model(self._model_path, strict=False)
-            self._tokenizer = load_tokenizer(self._model_path)
+            self._model, config = load_model(self._model_path, strict=False)
+            self._tokenizer = load_tokenizer(self._model_path, eos_token_ids=config.get("eos_token_id"))
 
     @staticmethod
     def _strip_control_tokens(text: str) -> str:
@@ -49,7 +53,7 @@ class MlxClient(BaseLLMClient):
             start = text.index(THINK_START) + len(THINK_START)
             end = text.index(THINK_END)
             thinking = MlxClient._strip_control_tokens(text[start:end])
-            answer = MlxClient._strip_control_tokens(text[end + len(THINK_END) :])
+            answer = MlxClient._strip_control_tokens(text[end + len(THINK_END):])
             return thinking, answer
         return "", MlxClient._strip_control_tokens(text)
 
@@ -65,8 +69,8 @@ class MlxClient(BaseLLMClient):
         model: Optional[str] = None,
         system: Optional[str] = None,
         tools: Optional[List[ToolDef]] = None,
-        max_tokens: int = 4096,
-        temperature: float = 1.0,
+        max_tokens: int = MAX_TOKEN,
+        temperature: float = DEFAULT_TEMPERATURE,
         **kwargs: Any,
     ) -> LLMResponse:
         from mlx_lm import generate
@@ -78,9 +82,10 @@ class MlxClient(BaseLLMClient):
 
         enable_thinking = kwargs.pop("enable_thinking", self._enable_thinking)
         prompt = self._build_prompt(messages, enable_thinking)
+        sampler = make_sampler(temp=temperature)
         raw = generate(
             self._model, self._tokenizer, prompt=prompt,
-            max_tokens=max_tokens, temp=temperature, verbose=False,
+            max_tokens=max_tokens, sampler=sampler, verbose=False,
         )
         thinking, content = self._parse_response(raw)
         return LLMResponse(content=content, thinking=thinking, stop_reason="end_turn")
@@ -91,8 +96,8 @@ class MlxClient(BaseLLMClient):
         model: Optional[str] = None,
         system: Optional[str] = None,
         tools: Optional[List[ToolDef]] = None,
-        max_tokens: int = 4096,
-        temperature: float = 1.0,
+        max_tokens: int = MAX_TOKEN,
+        temperature: float = DEFAULT_TEMPERATURE,
         **kwargs: Any,
     ) -> LLMResponse:
         loop = asyncio.get_event_loop()
@@ -108,8 +113,8 @@ class MlxClient(BaseLLMClient):
         model: Optional[str] = None,
         system: Optional[str] = None,
         tools: Optional[List[ToolDef]] = None,
-        max_tokens: int = 4096,
-        temperature: float = 1.0,
+        max_tokens: int = MAX_TOKEN,
+        temperature: float = DEFAULT_TEMPERATURE,
         **kwargs: Any,
     ) -> Iterator[StreamChunk]:
         from mlx_lm import stream_generate
@@ -121,6 +126,7 @@ class MlxClient(BaseLLMClient):
 
         enable_thinking = kwargs.pop("enable_thinking", self._enable_thinking)
         prompt = self._build_prompt(messages, enable_thinking)
+        sampler = make_sampler(temp=temperature)
 
         buffer = ""
         in_thinking = False
@@ -128,7 +134,7 @@ class MlxClient(BaseLLMClient):
 
         for chunk in stream_generate(
             self._model, self._tokenizer, prompt=prompt,
-            max_tokens=max_tokens, temp=temperature,
+            max_tokens=max_tokens, sampler=sampler,
         ):
             buffer += chunk.text
 
@@ -190,8 +196,8 @@ class MlxClient(BaseLLMClient):
         model: Optional[str] = None,
         system: Optional[str] = None,
         tools: Optional[List[ToolDef]] = None,
-        max_tokens: int = 4096,
-        temperature: float = 1.0,
+        max_tokens: int = MAX_TOKEN,
+        temperature: float = DEFAULT_TEMPERATURE,
         **kwargs: Any,
     ) -> AsyncIterator[StreamChunk]:
         sync_iter = self.stream(
