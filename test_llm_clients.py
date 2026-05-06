@@ -1,6 +1,6 @@
 """Comprehensive tests for llm_client package.
 
-Unit tests (no API) + Integration tests (require .env with MiniMax credentials).
+Unit tests (no API) + Integration tests (require YAML config with credentials).
 """
 
 import os
@@ -10,10 +10,6 @@ import sys
 import json
 import threading
 from unittest.mock import MagicMock, patch
-
-from dotenv import load_dotenv
-
-load_dotenv(override=True)
 
 from llm_client import (
     LLMClient,
@@ -32,16 +28,22 @@ from llm_client import (
     ThinkingBlock,
     AzureTokenProvider,
     detect_provider,
+    get_config,
+    get_profile,
+    create_anthropic_client,
+    create_openai_client,
     create_doubao_client,
     create_kimi_client,
     create_from_profiles,
 )
 
-MODEL = os.getenv("ANTHROPIC_MODEL", "MiniMax-M2.7-highspeed")
+_cfg = get_config()
+_profiles = _cfg.get("profiles", {})
+MODEL = _profiles.get("minimax-anthropic", {}).get("model", "MiniMax-M2.7-highspeed")
 MAX_TOKENS = 1024
-HAS_API = bool(os.environ.get("ANTHROPIC_AUTH_TOKEN"))
-HAS_DOUBAO = bool(os.environ.get("DOUBAO_API_KEY"))
-HAS_KIMI = bool(os.environ.get("KIMI_API_KEY"))
+HAS_API = bool(_profiles.get("minimax-anthropic", {}).get("api_key"))
+HAS_DOUBAO = bool(_profiles.get("doubao-glm", {}).get("api_key"))
+HAS_KIMI = bool(_profiles.get("kimi-k26", {}).get("api_key"))
 HAS_MLX = os.path.exists("/Users/vincent/.lmstudio/models/lmstudio-community/gemma-4-E4B-it-MLX-4bit")
 
 
@@ -781,12 +783,7 @@ def run_if_api(func):
 @run_if_api
 def test_anthropic_completion():
     print("=== Anthropic completion ===")
-    with AnthropicClient(
-        api_key=os.environ["ANTHROPIC_AUTH_TOKEN"],
-        base_url=os.getenv("ANTHROPIC_BASE_URL"),
-        auth_mode="bearer",
-        model=MODEL,
-    ) as client:
+    with create_anthropic_client(profile_name="minimax-anthropic") as client:
         resp = client.completion(
             messages=[Message(role="user", content="Say hello in one sentence.")],
             max_tokens=MAX_TOKENS,
@@ -803,12 +800,7 @@ def test_anthropic_completion():
 @run_if_api
 def test_anthropic_completion_with_system():
     print("=== Anthropic completion with system ===")
-    with AnthropicClient(
-        api_key=os.environ["ANTHROPIC_AUTH_TOKEN"],
-        base_url=os.getenv("ANTHROPIC_BASE_URL"),
-        auth_mode="bearer",
-        model=MODEL,
-    ) as client:
+    with create_anthropic_client(profile_name="minimax-anthropic") as client:
         resp = client.completion(
             messages=[Message(role="user", content="What is your name?")],
             system="You are a helpful assistant named Bot.",
@@ -822,12 +814,7 @@ def test_anthropic_completion_with_system():
 @run_if_api
 def test_anthropic_stream():
     print("=== Anthropic stream ===")
-    with AnthropicClient(
-        api_key=os.environ["ANTHROPIC_AUTH_TOKEN"],
-        base_url=os.getenv("ANTHROPIC_BASE_URL"),
-        auth_mode="bearer",
-        model=MODEL,
-    ) as client:
+    with create_anthropic_client(profile_name="minimax-anthropic") as client:
         chunks = client.stream(
             messages=[Message(role="user", content="Count from 1 to 3.")],
             max_tokens=MAX_TOKENS,
@@ -841,12 +828,7 @@ def test_anthropic_stream():
 @run_if_api
 def test_anthropic_stream_events():
     print("=== Anthropic stream events ===")
-    with AnthropicClient(
-        api_key=os.environ["ANTHROPIC_AUTH_TOKEN"],
-        base_url=os.getenv("ANTHROPIC_BASE_URL"),
-        auth_mode="bearer",
-        model=MODEL,
-    ) as client:
+    with create_anthropic_client(profile_name="minimax-anthropic") as client:
         events = []
         for chunk in client.stream(
             messages=[Message(role="user", content="Say hi")],
@@ -863,11 +845,7 @@ def test_anthropic_stream_events():
 @run_if_api
 def test_openai_completion():
     print("=== OpenAI completion ===")
-    with OpenAIClient(
-        api_key=os.environ["OPENAI_API_KEY"],
-        base_url=os.getenv("OPENAI_BASE_URL"),
-        model=MODEL,
-    ) as client:
+    with create_openai_client(profile_name="minimax-openai") as client:
         resp = client.completion(
             messages=[Message(role="user", content="Say hello in one sentence.")],
             max_tokens=MAX_TOKENS,
@@ -881,11 +859,7 @@ def test_openai_completion():
 @run_if_api
 def test_openai_stream():
     print("=== OpenAI stream ===")
-    with OpenAIClient(
-        api_key=os.environ["OPENAI_API_KEY"],
-        base_url=os.getenv("OPENAI_BASE_URL"),
-        model=MODEL,
-    ) as client:
+    with create_openai_client(profile_name="minimax-openai") as client:
         chunks = client.stream(
             messages=[Message(role="user", content="Count from 1 to 3.")],
             max_tokens=MAX_TOKENS,
@@ -899,20 +873,11 @@ def test_openai_stream():
 @run_if_api
 def test_llm_client_manager():
     print("=== LLMClient manager ===")
-    ant = AnthropicClient(
-        api_key=os.environ["ANTHROPIC_AUTH_TOKEN"],
-        base_url=os.getenv("ANTHROPIC_BASE_URL"),
-        auth_mode="bearer",
-        model=MODEL,
-    )
-    oai = OpenAIClient(
-        api_key=os.environ["OPENAI_API_KEY"],
-        base_url=os.getenv("OPENAI_BASE_URL"),
-        model=MODEL,
-    )
+    ant = create_anthropic_client(profile_name="minimax-anthropic")
+    oai = create_openai_client(profile_name="minimax-openai")
     with LLMClient() as mgr:
-        mgr.add_client(Provider.ANTHROPIC, ant, default=True)
-        mgr.add_client(Provider.OPENAI, oai)
+        mgr.add_client("minimax-anthropic", ant, default=True)
+        mgr.add_client("minimax-openai", oai)
 
         resp1 = mgr.completion(
             messages=[Message(role="user", content="Say hi")],
@@ -923,7 +888,7 @@ def test_llm_client_manager():
         resp2 = mgr.completion(
             messages=[Message(role="user", content="Say hi")],
             max_tokens=MAX_TOKENS,
-            provider=Provider.OPENAI,
+            provider="minimax-openai",
         )
         print(f"  [openai] {resp2.content}")
         assert resp1.content and resp2.content
@@ -933,14 +898,9 @@ def test_llm_client_manager():
 @run_if_api
 def test_llm_client_manager_stream():
     print("=== LLMClient manager stream ===")
-    ant = AnthropicClient(
-        api_key=os.environ["ANTHROPIC_AUTH_TOKEN"],
-        base_url=os.getenv("ANTHROPIC_BASE_URL"),
-        auth_mode="bearer",
-        model=MODEL,
-    )
+    ant = create_anthropic_client(profile_name="minimax-anthropic")
     with LLMClient() as mgr:
-        mgr.add_client(Provider.ANTHROPIC, ant, default=True)
+        mgr.add_client("minimax-anthropic", ant, default=True)
         chunks = mgr.stream(
             messages=[Message(role="user", content="Say hi")],
             max_tokens=MAX_TOKENS,
@@ -954,24 +914,17 @@ def test_llm_client_manager_stream():
 @run_if_api
 def test_async_completion():
     print("=== Async Anthropic completion ===")
-    result = _run_subprocess(f"""
-import os, asyncio
-from dotenv import load_dotenv
-load_dotenv(override=True)
-from llm_client import AnthropicClient, Message
+    result = _run_subprocess("""
+import asyncio
+from llm_client import create_anthropic_client, Message
 
 async def test():
-    async with AnthropicClient(
-        api_key=os.environ["ANTHROPIC_AUTH_TOKEN"],
-        base_url=os.getenv("ANTHROPIC_BASE_URL"),
-        auth_mode="bearer",
-        model={MODEL!r},
-    ) as client:
+    async with create_anthropic_client(profile_name="minimax-anthropic") as client:
         resp = await client.async_completion(
             messages=[Message(role="user", content="Say hello in one sentence.")],
-            max_tokens={MAX_TOKENS},
+            max_tokens=1024,
         )
-        print(f"Content: {{resp.content}}")
+        print(f"Content: {resp.content}")
         assert resp.content, "Empty response"
         print("PASS")
 
@@ -987,25 +940,18 @@ asyncio.run(test())
 @run_if_api
 def test_async_stream():
     print("=== Async Anthropic stream ===")
-    result = _run_subprocess(f"""
-import os, asyncio
-from dotenv import load_dotenv
-load_dotenv(override=True)
-from llm_client import AnthropicClient, Message
+    result = _run_subprocess("""
+import asyncio
+from llm_client import create_anthropic_client, Message
 
 async def test():
-    async with AnthropicClient(
-        api_key=os.environ["ANTHROPIC_AUTH_TOKEN"],
-        base_url=os.getenv("ANTHROPIC_BASE_URL"),
-        auth_mode="bearer",
-        model={MODEL!r},
-    ) as client:
+    async with create_anthropic_client(profile_name="minimax-anthropic") as client:
         chunks = client.async_stream(
             messages=[Message(role="user", content="Say hello")],
-            max_tokens={MAX_TOKENS},
+            max_tokens=1024,
         )
         resp = await client.async_collect_stream(chunks)
-        print(f"Content: {{resp.content}}")
+        print(f"Content: {resp.content}")
         assert resp.content, "Empty response"
         print("PASS")
 
@@ -1021,23 +967,17 @@ asyncio.run(test())
 @run_if_api
 def test_async_openai_completion():
     print("=== Async OpenAI completion ===")
-    result = _run_subprocess(f"""
-import os, asyncio
-from dotenv import load_dotenv
-load_dotenv(override=True)
-from llm_client import OpenAIClient, Message
+    result = _run_subprocess("""
+import asyncio
+from llm_client import create_openai_client, Message
 
 async def test():
-    async with OpenAIClient(
-        api_key=os.environ["OPENAI_API_KEY"],
-        base_url=os.getenv("OPENAI_BASE_URL"),
-        model={MODEL!r},
-    ) as client:
+    async with create_openai_client(profile_name="minimax-openai") as client:
         resp = await client.async_completion(
             messages=[Message(role="user", content="Say hello")],
-            max_tokens={MAX_TOKENS},
+            max_tokens=1024,
         )
-        print(f"Content: {{resp.content}}")
+        print(f"Content: {resp.content}")
         assert resp.content, "Empty response"
         print("PASS")
 
@@ -1053,10 +993,10 @@ asyncio.run(test())
 @run_if_api
 def test_doubao_completion():
     if not HAS_DOUBAO:
-        print("=== Doubao completion === SKIP (no DOUBAO_API_KEY)")
+        print("=== Doubao completion === SKIP (no doubao profile)")
         return
     print("=== Doubao completion ===")
-    with create_doubao_client() as client:
+    with create_doubao_client(profile_name="doubao-glm") as client:
         resp = client.completion(
             messages=[Message(role="user", content="Say hello in one sentence.")],
             max_tokens=MAX_TOKENS,
@@ -1069,10 +1009,10 @@ def test_doubao_completion():
 @run_if_api
 def test_doubao_stream():
     if not HAS_DOUBAO:
-        print("=== Doubao stream === SKIP (no DOUBAO_API_KEY)")
+        print("=== Doubao stream === SKIP (no doubao profile)")
         return
     print("=== Doubao stream ===")
-    with create_doubao_client() as client:
+    with create_doubao_client(profile_name="doubao-glm") as client:
         chunks = client.stream(
             messages=[Message(role="user", content="Count from 1 to 3.")],
             max_tokens=MAX_TOKENS,
@@ -1086,10 +1026,10 @@ def test_doubao_stream():
 @run_if_api
 def test_kimi_completion():
     if not HAS_KIMI:
-        print("=== Kimi completion === SKIP (no KIMI_API_KEY)")
+        print("=== Kimi completion === SKIP (no kimi profile)")
         return
     print("=== Kimi completion ===")
-    with create_kimi_client() as client:
+    with create_kimi_client(profile_name="kimi-k26") as client:
         resp = client.completion(
             messages=[Message(role="user", content="Say hello in one sentence.")],
             max_tokens=MAX_TOKENS,
@@ -1102,10 +1042,10 @@ def test_kimi_completion():
 @run_if_api
 def test_kimi_stream():
     if not HAS_KIMI:
-        print("=== Kimi stream === SKIP (no KIMI_API_KEY)")
+        print("=== Kimi stream === SKIP (no kimi profile)")
         return
     print("=== Kimi stream ===")
-    with create_kimi_client() as client:
+    with create_kimi_client(profile_name="kimi-k26") as client:
         chunks = client.stream(
             messages=[Message(role="user", content="Count from 1 to 3.")],
             max_tokens=MAX_TOKENS,
