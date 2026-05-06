@@ -20,6 +20,7 @@ from llm_client import (
     AnthropicClient,
     OpenAIClient,
     AzureClient,
+    MlxClient,
     BaseLLMClient,
     LLMResponse,
     Message,
@@ -33,6 +34,7 @@ from llm_client import (
     detect_provider,
     create_doubao_client,
     create_kimi_client,
+    create_from_profiles,
 )
 
 MODEL = os.getenv("ANTHROPIC_MODEL", "MiniMax-M2.7-highspeed")
@@ -40,6 +42,7 @@ MAX_TOKENS = 1024
 HAS_API = bool(os.environ.get("ANTHROPIC_AUTH_TOKEN"))
 HAS_DOUBAO = bool(os.environ.get("DOUBAO_API_KEY"))
 HAS_KIMI = bool(os.environ.get("KIMI_API_KEY"))
+HAS_MLX = os.path.exists("/Users/vincent/.lmstudio/models/lmstudio-community/gemma-4-E4B-it-MLX-4bit")
 
 
 # ─── Unit Tests (no API calls) ─────────────────────────────────────────
@@ -52,6 +55,7 @@ class TestModels:
         assert Provider.AZURE == "azure"
         assert Provider.DOUBAO == "doubao"
         assert Provider.KIMI == "kimi"
+        assert Provider.MLX == "mlx"
 
     def test_detect_provider(self):
         assert detect_provider("claude-3-opus") == Provider.ANTHROPIC
@@ -535,6 +539,81 @@ class TestAzureToken:
         client = AzureClient(deployment="d", endpoint="https://x.openai.azure.com")
         h = client._headers(token="my-token")
         assert h["Authorization"] == "Bearer my-token"
+
+
+class TestMlxClient:
+    MODEL_PATH = "/Users/vincent/.lmstudio/models/lmstudio-community/gemma-4-E4B-it-MLX-4bit"
+
+    def test_init_defaults(self):
+        c = MlxClient(model_path=self.MODEL_PATH)
+        assert c._default_model == self.MODEL_PATH
+        assert c._enable_thinking is True
+        assert c._model is None
+        assert c._tokenizer is None
+
+    def test_init_disable_thinking(self):
+        c = MlxClient(model_path=self.MODEL_PATH, enable_thinking=False)
+        assert c._enable_thinking is False
+
+    def test_strip_control_tokens(self):
+        assert MlxClient._strip_control_tokens("<|turn|>") == ""
+        assert MlxClient._strip_control_tokens("<turn|>") == ""
+        assert MlxClient._strip_control_tokens("hello<|turn|>world") == "helloworld"
+        assert MlxClient._strip_control_tokens("plain text") == "plain text"
+
+    def test_parse_response_with_thinking(self):
+        text = "<|channel>thoughtsome thinking<channel|>the answer"
+        thinking, answer = MlxClient._parse_response(text)
+        assert thinking == "some thinking"
+        assert answer == "the answer"
+
+    def test_parse_response_no_thinking(self):
+        thinking, answer = MlxClient._parse_response("just an answer")
+        assert thinking == ""
+        assert answer == "just an answer"
+
+    def test_parse_response_with_control_tokens(self):
+        text = "<|channel>thoughtthink here<channel|>answer<|turn|>"
+        thinking, answer = MlxClient._parse_response(text)
+        assert thinking == "think here"
+        assert answer == "answer"
+
+    def test_close_resets_model(self):
+        c = MlxClient(model_path=self.MODEL_PATH)
+        c._model = "fake"
+        c._tokenizer = "fake"
+        c.close()
+        assert c._model is None
+        assert c._tokenizer is None
+
+    def test_aclose_resets_model(self):
+        async def run():
+            c = MlxClient(model_path=self.MODEL_PATH)
+            c._model = "fake"
+            c._tokenizer = "fake"
+            await c.aclose()
+            assert c._model is None
+            assert c._tokenizer is None
+        asyncio.run(run())
+
+    def test_lazy_load_not_called_on_init(self):
+        c = MlxClient(model_path=self.MODEL_PATH)
+        assert c._model is None
+        assert c._tokenizer is None
+
+    def test_mlx_in_manager(self):
+        mgr = LLMClient()
+        c = MlxClient(model_path=self.MODEL_PATH)
+        mgr.add_client("gemma4-e4b", c, default=True)
+        assert mgr.get_client() is c
+        assert mgr.default_provider == "gemma4-e4b"
+
+    def test_create_from_profiles_mlx(self):
+        llm = create_from_profiles()
+        assert "gemma4-e4b" in llm.available_profiles
+        client = llm.get_client("gemma4-e4b")
+        assert isinstance(client, MlxClient)
+        assert client._enable_thinking is True
 
 
 class TestLLMClientManager:
@@ -1037,6 +1116,113 @@ def test_kimi_stream():
         print("  PASS\n")
 
 
+@run_if_api
+def test_mlx_completion():
+    if not HAS_MLX:
+        print("=== MLX completion === SKIP (model not found)")
+        return
+    print("=== MLX completion ===")
+    with MlxClient(model_path=TestMlxClient.MODEL_PATH) as client:
+        resp = client.completion(
+            messages=[Message(role="user", content="Say hello in one sentence.")],
+            max_tokens=MAX_TOKENS,
+        )
+        print(f"  Content: {resp.content}")
+        print(f"  Thinking: {resp.thinking[:100] if resp.thinking else '(none)'}")
+        print(f"  Stop reason: {resp.stop_reason}")
+        assert resp.content, "Empty response"
+        assert resp.stop_reason == "end_turn"
+        print("  PASS\n")
+
+
+@run_if_api
+def test_mlx_completion_with_system():
+    if not HAS_MLX:
+        print("=== MLX completion with system === SKIP (model not found)")
+        return
+    print("=== MLX completion with system ===")
+    with MlxClient(model_path=TestMlxClient.MODEL_PATH) as client:
+        resp = client.completion(
+            messages=[Message(role="user", content="What is your name?")],
+            system="You are a helpful assistant named Bot.",
+            max_tokens=MAX_TOKENS,
+        )
+        print(f"  Content: {resp.content}")
+        assert resp.content
+        print("  PASS\n")
+
+
+@run_if_api
+def test_mlx_stream():
+    if not HAS_MLX:
+        print("=== MLX stream === SKIP (model not found)")
+        return
+    print("=== MLX stream ===")
+    with MlxClient(model_path=TestMlxClient.MODEL_PATH) as client:
+        chunks = client.stream(
+            messages=[Message(role="user", content="Count from 1 to 3.")],
+            max_tokens=MAX_TOKENS,
+        )
+        resp = client.collect_stream(chunks)
+        print(f"  Content: {resp.content}")
+        print(f"  Thinking: {resp.thinking[:100] if resp.thinking else '(none)'}")
+        assert resp.content
+        print("  PASS\n")
+
+
+@run_if_api
+def test_mlx_no_thinking():
+    if not HAS_MLX:
+        print("=== MLX no thinking === SKIP (model not found)")
+        return
+    print("=== MLX no thinking ===")
+    with MlxClient(model_path=TestMlxClient.MODEL_PATH, enable_thinking=False) as client:
+        resp = client.completion(
+            messages=[Message(role="user", content="Say hello.")],
+            max_tokens=MAX_TOKENS,
+        )
+        print(f"  Content: {resp.content}")
+        assert resp.content
+        print("  PASS\n")
+
+
+@run_if_api
+def test_mlx_from_profiles():
+    if not HAS_MLX:
+        print("=== MLX from profiles === SKIP (model not found)")
+        return
+    print("=== MLX from profiles ===")
+    llm = create_from_profiles()
+    resp = llm.completion(
+        messages=[Message(role="user", content="Say hi")],
+        max_tokens=MAX_TOKENS,
+        provider="gemma4-e4b",
+    )
+    print(f"  Content: {resp.content}")
+    assert resp.content
+    print("  PASS\n")
+
+
+@run_if_api
+def test_mlx_async_completion():
+    if not HAS_MLX:
+        print("=== MLX async completion === SKIP (model not found)")
+        return
+    print("=== MLX async completion ===")
+
+    async def run():
+        async with MlxClient(model_path=TestMlxClient.MODEL_PATH) as client:
+            resp = await client.async_completion(
+                messages=[Message(role="user", content="Say hello.")],
+                max_tokens=MAX_TOKENS,
+            )
+            print(f"  Content: {resp.content}")
+            assert resp.content, "Empty response"
+
+    asyncio.run(run())
+    print("  PASS\n")
+
+
 # ─── Runner ─────────────────────────────────────────────────────────────
 
 
@@ -1052,6 +1238,7 @@ def run_unit_tests():
         TestOpenAIParsing(),
         TestAnthropicParsing(),
         TestAzureToken(),
+        TestMlxClient(),
         TestLLMClientManager(),
         TestClientInit(),
     ]
@@ -1097,6 +1284,12 @@ def run_integration_tests():
         test_doubao_stream,
         test_kimi_completion,
         test_kimi_stream,
+        test_mlx_completion,
+        test_mlx_completion_with_system,
+        test_mlx_stream,
+        test_mlx_no_thinking,
+        test_mlx_from_profiles,
+        test_mlx_async_completion,
     ]
 
     total = len(tests)

@@ -1,0 +1,43 @@
+default: minimax-anthropic
+
+profiles:
+  minimax-anthropic:
+    provider: anthropic
+    base_url: https://api.minimaxi.com/anthropic
+    api_key: api_key
+    model: MiniMax-M2.7-highspeed
+
+  minimax-openai:
+    provider: openai
+    base_url: https://api.minimaxi.com/v1
+    api_key: api_key
+    model: MiniMax-M2.7-highspeed
+
+  azure-gpt51:
+    provider: azure
+    endpoint: AZURE_OPENAI_ENDPOINT
+    deployment: gpt-5.1
+    api_version: 2025-04-01-preview
+    model_version: 2025-11-13
+
+  doubao-glm:
+    provider: doubao
+    base_url: https://ark.cn-beijing.volces.com/api/coding
+    api_key: api_key
+    model: glm-5.1
+    auth_mode: bearer
+
+  kimi-k26:
+    provider: kimi
+    base_url: https://api.kimi.com/coding/
+    api_key: api_key
+    model: kimi-k2.6
+    auth_mode: bearer
+    thinking:
+      type: enabled
+      budget_tokens: 10000
+
+  gemma4-e4b:
+    provider: mlx
+    model_path: /Users/vincent/.lmstudio/models/lmstudio-community/gemma-4-E4B-it-MLX-4bit
+    enable_thinking: true
