@@ -1025,6 +1025,41 @@ def test_doubao_stream():
 
 
 @run_if_api
+def test_doubao_completion_with_system():
+    if not HAS_DOUBAO:
+        print("=== Doubao completion with system === SKIP (no doubao profile)")
+        return
+    print("=== Doubao completion with system ===")
+    with create_doubao_client(profile_name="doubao-glm") as client:
+        resp = client.completion(
+            messages=[Message(role="user", content="What is your name?")],
+            system="You are a helpful assistant named Bot.",
+            max_tokens=MAX_TOKENS,
+        )
+        print(f"  Content: {resp.content}")
+        assert resp.content
+        print("  PASS\n")
+
+
+@run_if_api
+def test_doubao_stream_with_system():
+    if not HAS_DOUBAO:
+        print("=== Doubao stream with system === SKIP (no doubao profile)")
+        return
+    print("=== Doubao stream with system ===")
+    with create_doubao_client(profile_name="doubao-glm") as client:
+        chunks = client.stream(
+            messages=[Message(role="user", content="What is your name?")],
+            system="You are a helpful assistant named Bot.",
+            max_tokens=MAX_TOKENS,
+        )
+        resp = client.collect_stream(chunks)
+        print(f"  Content: {resp.content}")
+        assert resp.content
+        print("  PASS\n")
+
+
+@run_if_api
 def test_kimi_completion():
     if not HAS_KIMI:
         print("=== Kimi completion === SKIP (no kimi profile)")
@@ -1223,6 +1258,8 @@ def run_integration_tests():
         test_async_openai_completion,
         test_doubao_completion,
         test_doubao_stream,
+        test_doubao_completion_with_system,
+        test_doubao_stream_with_system,
         test_kimi_completion,
         test_kimi_stream,
         test_mlx_completion,
