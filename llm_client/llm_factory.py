@@ -1,11 +1,17 @@
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, Optional, Union
 
 import yaml
 
-from . import AnthropicClient, AzureClient, LLMClient, MlxClient, OpenAIClient
+from .anthropic_client import AnthropicClient
+from .azure_client import AzureClient
 from .base import BaseLLMClient
+from .llm_client import LLMClient
 from .models import Provider
+from .openai_client import OpenAIClient
+
+if TYPE_CHECKING:
+    from .mlx_client import MlxClient
 
 _DEFAULT_CONFIG_PATH = Path.home() / ".llm_client_models.yaml"
 
@@ -148,7 +154,9 @@ def create_kimi_client(
 def create_mlx_client(
     profile_name: str = "gemma4-e4b",
     **overrides: Any,
-) -> MlxClient:
+) -> "MlxClient":
+    from .mlx_client import MlxClient
+
     p = get_profile(profile_name) | overrides
     return MlxClient(
         model_path=p["model_path"],
@@ -260,6 +268,8 @@ def _create_client_from_profile(
             timeout=timeout,
         )
     elif provider == "mlx":
+        from .mlx_client import MlxClient
+
         return MlxClient(
             model_path=profile["model_path"],
             enable_thinking=profile.get("enable_thinking", True),
