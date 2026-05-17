@@ -6,7 +6,7 @@ from typing import Any, AsyncIterator, Dict, Iterator, List, Optional
 import httpx
 
 from .base import BaseLLMClient
-from .models import LLMResponse, Message, StreamChunk, StreamEvent, ToolDef, ToolUse
+from .models import LLMResponse, Message, Messages, StreamChunk, StreamEvent, ToolDef, ToolUse
 
 
 class AnthropicClient(BaseLLMClient):
@@ -202,7 +202,7 @@ class AnthropicClient(BaseLLMClient):
 
     def completion(
         self,
-        messages: List[Message],
+        messages: Messages,
         model: Optional[str] = None,
         system: Optional[str] = None,
         tools: Optional[List[ToolDef]] = None,
@@ -210,6 +210,7 @@ class AnthropicClient(BaseLLMClient):
         temperature: float = 1.0,
         **kwargs: Any,
     ) -> LLMResponse:
+        messages = self._normalize_messages(messages)
         model = model or self._default_model
         if not model:
             raise ValueError("model must be provided either at init or per-call")
@@ -223,7 +224,7 @@ class AnthropicClient(BaseLLMClient):
 
     async def async_completion(
         self,
-        messages: List[Message],
+        messages: Messages,
         model: Optional[str] = None,
         system: Optional[str] = None,
         tools: Optional[List[ToolDef]] = None,
@@ -231,6 +232,7 @@ class AnthropicClient(BaseLLMClient):
         temperature: float = 1.0,
         **kwargs: Any,
     ) -> LLMResponse:
+        messages = self._normalize_messages(messages)
         model = model or self._default_model
         if not model:
             raise ValueError("model must be provided either at init or per-call")
@@ -244,7 +246,7 @@ class AnthropicClient(BaseLLMClient):
 
     def stream(
         self,
-        messages: List[Message],
+        messages: Messages,
         model: Optional[str] = None,
         system: Optional[str] = None,
         tools: Optional[List[ToolDef]] = None,
@@ -252,6 +254,7 @@ class AnthropicClient(BaseLLMClient):
         temperature: float = 1.0,
         **kwargs: Any,
     ) -> Iterator[StreamChunk]:
+        messages = self._normalize_messages(messages)
         model = model or self._default_model
         if not model:
             raise ValueError("model must be provided either at init or per-call")
@@ -281,7 +284,7 @@ class AnthropicClient(BaseLLMClient):
 
     async def async_stream(
         self,
-        messages: List[Message],
+        messages: Messages,
         model: Optional[str] = None,
         system: Optional[str] = None,
         tools: Optional[List[ToolDef]] = None,
@@ -289,6 +292,7 @@ class AnthropicClient(BaseLLMClient):
         temperature: float = 1.0,
         **kwargs: Any,
     ) -> AsyncIterator[StreamChunk]:
+        messages = self._normalize_messages(messages)
         model = model or self._default_model
         if not model:
             raise ValueError("model must be provided either at init or per-call")

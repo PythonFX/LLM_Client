@@ -69,6 +69,9 @@ class Message:
     tool_call_id: Optional[str] = None
 
 
+Messages = Union[List[Message], List[Dict[str, Any]]]
+
+
 AzureTokenProvider = Union[str, Callable[[], str], Callable[[], Awaitable[str]]]
 
 

@@ -1,19 +1,35 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, AsyncIterator, Iterator, List, Optional
+from typing import Any, AsyncIterator, Dict, Iterator, List, Optional, Union
 
-from .models import LLMResponse, Message, StreamChunk, ToolDef
+from .models import LLMResponse, Message, Messages, StreamChunk, ToolDef
 
 
 class BaseLLMClient(ABC):
     def __init__(self, model: Optional[str] = None) -> None:
         self._default_model = model
 
+    @staticmethod
+    def _normalize_messages(messages: Messages) -> List[Message]:
+        if not messages:
+            return messages
+        if isinstance(messages[0], Message):
+            return messages
+        return [
+            Message(
+                role=m["role"],
+                content=m.get("content") or "",
+                tool_calls=m.get("tool_calls"),
+                tool_call_id=m.get("tool_call_id"),
+            )
+            for m in messages
+        ]
+
     @abstractmethod
     def completion(
         self,
-        messages: List[Message],
+        messages: Messages,
         model: Optional[str] = None,
         system: Optional[str] = None,
         tools: Optional[List[ToolDef]] = None,
@@ -25,7 +41,7 @@ class BaseLLMClient(ABC):
     @abstractmethod
     async def async_completion(
         self,
-        messages: List[Message],
+        messages: Messages,
         model: Optional[str] = None,
         system: Optional[str] = None,
         tools: Optional[List[ToolDef]] = None,
@@ -37,7 +53,7 @@ class BaseLLMClient(ABC):
     @abstractmethod
     def stream(
         self,
-        messages: List[Message],
+        messages: Messages,
         model: Optional[str] = None,
         system: Optional[str] = None,
         tools: Optional[List[ToolDef]] = None,
@@ -49,7 +65,7 @@ class BaseLLMClient(ABC):
     @abstractmethod
     async def async_stream(
         self,
-        messages: List[Message],
+        messages: Messages,
         model: Optional[str] = None,
         system: Optional[str] = None,
         tools: Optional[List[ToolDef]] = None,

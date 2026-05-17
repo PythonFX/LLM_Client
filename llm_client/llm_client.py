@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any, AsyncIterator, Dict, Iterator, List, Optional, Union
 
 from .base import BaseLLMClient
-from .models import LLMResponse, Message, Provider, StreamChunk, ToolDef
+from .models import LLMResponse, Message, Messages, Provider, StreamChunk, ToolDef
 
 
 def _resolve_key(value: Union[Provider, str]) -> str:
@@ -60,7 +60,7 @@ class LLMClient(BaseLLMClient):
 
     def completion(
         self,
-        messages: List[Message],
+        messages: Messages,
         model: Optional[str] = None,
         system: Optional[str] = None,
         tools: Optional[List[ToolDef]] = None,
@@ -69,13 +69,14 @@ class LLMClient(BaseLLMClient):
         provider: Optional[str] = None,
         **kwargs: Any,
     ) -> LLMResponse:
+        messages = self._normalize_messages(messages)
         client = self.get_client(provider)
         return client.completion(messages, model=model, system=system, tools=tools,
                                  max_tokens=max_tokens, temperature=temperature, **kwargs)
 
     async def async_completion(
         self,
-        messages: List[Message],
+        messages: Messages,
         model: Optional[str] = None,
         system: Optional[str] = None,
         tools: Optional[List[ToolDef]] = None,
@@ -84,13 +85,14 @@ class LLMClient(BaseLLMClient):
         provider: Optional[str] = None,
         **kwargs: Any,
     ) -> LLMResponse:
+        messages = self._normalize_messages(messages)
         client = self.get_client(provider)
         return await client.async_completion(messages, model=model, system=system, tools=tools,
                                              max_tokens=max_tokens, temperature=temperature, **kwargs)
 
     def stream(
         self,
-        messages: List[Message],
+        messages: Messages,
         model: Optional[str] = None,
         system: Optional[str] = None,
         tools: Optional[List[ToolDef]] = None,
@@ -99,13 +101,14 @@ class LLMClient(BaseLLMClient):
         provider: Optional[str] = None,
         **kwargs: Any,
     ) -> Iterator[StreamChunk]:
+        messages = self._normalize_messages(messages)
         client = self.get_client(provider)
         yield from client.stream(messages, model=model, system=system, tools=tools,
                                  max_tokens=max_tokens, temperature=temperature, **kwargs)
 
     async def async_stream(
         self,
-        messages: List[Message],
+        messages: Messages,
         model: Optional[str] = None,
         system: Optional[str] = None,
         tools: Optional[List[ToolDef]] = None,
@@ -114,6 +117,7 @@ class LLMClient(BaseLLMClient):
         provider: Optional[str] = None,
         **kwargs: Any,
     ) -> AsyncIterator[StreamChunk]:
+        messages = self._normalize_messages(messages)
         client = self.get_client(provider)
         async for chunk in client.async_stream(messages, model=model, system=system, tools=tools,
                                                max_tokens=max_tokens, temperature=temperature, **kwargs):

@@ -10,7 +10,7 @@ from typing import Any, AsyncIterator, Iterator, List, Optional
 from mlx_lm.sample_utils import make_sampler
 
 from .base import BaseLLMClient
-from .models import LLMResponse, Message, StreamChunk, StreamEvent, ToolDef
+from .models import LLMResponse, Message, Messages, StreamChunk, StreamEvent, ToolDef
 
 THINK_START = "<|channel>thought"
 THINK_END = "<channel|>"
@@ -65,7 +65,7 @@ class MlxClient(BaseLLMClient):
 
     def completion(
         self,
-        messages: List[Message],
+        messages: Messages,
         model: Optional[str] = None,
         system: Optional[str] = None,
         tools: Optional[List[ToolDef]] = None,
@@ -73,6 +73,7 @@ class MlxClient(BaseLLMClient):
         temperature: float = DEFAULT_TEMPERATURE,
         **kwargs: Any,
     ) -> LLMResponse:
+        messages = self._normalize_messages(messages)
         from mlx_lm import generate
 
         self._load()
@@ -92,7 +93,7 @@ class MlxClient(BaseLLMClient):
 
     async def async_completion(
         self,
-        messages: List[Message],
+        messages: Messages,
         model: Optional[str] = None,
         system: Optional[str] = None,
         tools: Optional[List[ToolDef]] = None,
@@ -100,6 +101,7 @@ class MlxClient(BaseLLMClient):
         temperature: float = DEFAULT_TEMPERATURE,
         **kwargs: Any,
     ) -> LLMResponse:
+        messages = self._normalize_messages(messages)
         loop = asyncio.get_event_loop()
         func = partial(
             self.completion, messages, model=model, system=system,
@@ -109,7 +111,7 @@ class MlxClient(BaseLLMClient):
 
     def stream(
         self,
-        messages: List[Message],
+        messages: Messages,
         model: Optional[str] = None,
         system: Optional[str] = None,
         tools: Optional[List[ToolDef]] = None,
@@ -117,6 +119,7 @@ class MlxClient(BaseLLMClient):
         temperature: float = DEFAULT_TEMPERATURE,
         **kwargs: Any,
     ) -> Iterator[StreamChunk]:
+        messages = self._normalize_messages(messages)
         from mlx_lm import stream_generate
 
         self._load()
@@ -192,7 +195,7 @@ class MlxClient(BaseLLMClient):
 
     async def async_stream(
         self,
-        messages: List[Message],
+        messages: Messages,
         model: Optional[str] = None,
         system: Optional[str] = None,
         tools: Optional[List[ToolDef]] = None,
@@ -200,6 +203,7 @@ class MlxClient(BaseLLMClient):
         temperature: float = DEFAULT_TEMPERATURE,
         **kwargs: Any,
     ) -> AsyncIterator[StreamChunk]:
+        messages = self._normalize_messages(messages)
         sync_iter = self.stream(
             messages, model=model, system=system,
             tools=tools, max_tokens=max_tokens, temperature=temperature, **kwargs,
