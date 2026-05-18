@@ -115,6 +115,22 @@ def create_azure_client_ad_token(
     )
 
 
+def create_zhipu_client(
+    profile_name: str = "zhipu-glm",
+    timeout: float = 300.0,
+    **overrides: Any,
+) -> AnthropicClient:
+    p = get_profile(profile_name) | overrides
+    return AnthropicClient(
+        api_key=p["api_key"],
+        base_url=p.get("base_url"),
+        model=p.get("model"),
+        auth_mode=p.get("auth_mode", "bearer"),
+        thinking=p.get("thinking"),
+        timeout=timeout,
+    )
+
+
 def create_doubao_client(
     profile_name: str = "doubao",
     timeout: float = 300.0,

@@ -37,6 +37,7 @@ from llm_client import (
     create_mlx_client,
     create_from_profiles,
 )
+from llm_client.llm_factory import create_zhipu_client
 
 _cfg = get_config()
 _profiles = _cfg.get("profiles", {})
@@ -44,6 +45,7 @@ MODEL = _profiles.get("minimax-anthropic", {}).get("model", "MiniMax-M2.7-highsp
 MAX_TOKENS = 1024
 HAS_API = bool(_profiles.get("minimax-anthropic", {}).get("api_key"))
 HAS_DOUBAO = bool(_profiles.get("doubao-glm", {}).get("api_key"))
+HAS_ZHIPU = bool(_profiles.get("zhipu-glm", {}).get("api_key"))
 HAS_KIMI = bool(_profiles.get("kimi-k26", {}).get("api_key"))
 HAS_MLX = os.path.exists("/Users/vincent/.lmstudio/models/lmstudio-community/gemma-4-E4B-it-MLX-4bit")
 
@@ -1005,6 +1007,22 @@ def test_doubao_completion():
         print(f"  Content: {resp.content}")
         assert resp.content, "Empty response"
         print("  PASS\n")
+        
+
+@run_if_api
+def test_zhipu_completion():
+    if not HAS_ZHIPU:
+        print("=== Zhipou completion === SKIP (no Zhipou profile)")
+        return
+    print("=== Zhipou completion ===")
+    with create_zhipu_client() as client:
+        resp = client.completion(
+            messages=[Message(role="user", content="Say hello in one sentence.")],
+            max_tokens=MAX_TOKENS,
+        )
+        print(f"  Content: {resp.content}")
+        assert resp.content, "Empty response"
+        print("  PASS\n")
 
 
 @run_if_api
@@ -1014,6 +1032,23 @@ def test_doubao_stream():
         return
     print("=== Doubao stream ===")
     with create_doubao_client(profile_name="doubao-glm") as client:
+        chunks = client.stream(
+            messages=[Message(role="user", content="Count from 1 to 3.")],
+            max_tokens=MAX_TOKENS,
+        )
+        resp = client.collect_stream(chunks)
+        print(f"  Content: {resp.content}")
+        assert resp.content
+        print("  PASS\n")
+        
+
+@run_if_api
+def test_zhipu_stream():
+    if not HAS_ZHIPU:
+        print("=== Zhipou completion === SKIP (no Zhipou profile)")
+        return
+    print("=== Zhipou stream ===")
+    with create_zhipu_client() as client:
         chunks = client.stream(
             messages=[Message(role="user", content="Count from 1 to 3.")],
             max_tokens=MAX_TOKENS,
@@ -1258,6 +1293,8 @@ def run_integration_tests():
         test_async_openai_completion,
         test_doubao_completion,
         test_doubao_stream,
+        test_zhipu_completion,
+        test_zhipu_stream,
         test_doubao_completion_with_system,
         test_doubao_stream_with_system,
         test_kimi_completion,
