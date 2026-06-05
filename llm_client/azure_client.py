@@ -6,9 +6,9 @@ from typing import Any, AsyncIterator, Awaitable, Callable, Dict, Iterator, List
 
 import httpx
 
-from .base import BaseLLMClient
-from .models import AzureTokenProvider, LLMResponse, Message, Messages, StreamChunk, StreamEvent, ToolDef, ToolUse
-from .openai_client import OpenAIClient
+from llm_client.base import BaseLLMClient
+from llm_client.models import AzureTokenProvider, LLMResponse, Message, Messages, StreamChunk, StreamEvent, ToolDef, ToolUse
+from llm_client.openai_client import OpenAIClient
 
 
 class AzureClient(BaseLLMClient):

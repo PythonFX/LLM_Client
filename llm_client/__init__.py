@@ -1,4 +1,4 @@
-from .models import (
+from llm_client.models import (
     AzureTokenProvider,
     LLMResponse,
     Message,
@@ -11,12 +11,16 @@ from .models import (
     ToolUse,
     detect_provider,
 )
-from .base import BaseLLMClient
-from .openai_client import OpenAIClient
-from .azure_client import AzureClient
-from .anthropic_client import AnthropicClient
-from .llm_client import LLMClient
-from .llm_factory import create_anthropic_client, create_azure_client, create_doubao_client, create_from_profiles, create_kimi_client, create_llm_client, create_mlx_client, create_openai_client, get_config, get_profile
+from llm_client.base import BaseLLMClient
+from llm_client.openai_client import OpenAIClient
+from llm_client.azure_client import AzureClient
+from llm_client.anthropic_client import AnthropicClient
+from llm_client.llm_client import LLMClient
+from llm_client.llm_factory import (
+    create_anthropic_client, create_azure_client, create_doubao_client, create_from_profiles,
+    create_kimi_client, create_llm_client, create_mlx_client, create_openai_client, create_zhipu_client,
+    get_config, get_profile
+)
 
 __all__ = [
     "AzureClient",
@@ -37,6 +41,7 @@ __all__ = [
     "ToolUse",
     "detect_provider",
     "create_anthropic_client",
+    "create_zhipu_client",
     "create_azure_client",
     "create_doubao_client",
     "create_from_profiles",
@@ -51,7 +56,7 @@ __all__ = [
 
 def __getattr__(name: str):
     if name == "MlxClient":
-        from .mlx_client import MlxClient
+        from llm_client.mlx_client import MlxClient
 
         return MlxClient
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

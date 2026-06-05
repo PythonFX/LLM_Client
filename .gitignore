@@ -11,3 +11,4 @@ build/
 .idea/
 .omc/
 *.egg
+.DS_Store

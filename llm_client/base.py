@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import Any, AsyncIterator, Dict, Iterator, List, Optional, Union
 
-from .models import LLMResponse, Message, Messages, StreamChunk, ToolDef
+from llm_client.models import LLMResponse, Message, Messages, StreamChunk, ToolDef
 
 
 class BaseLLMClient(ABC):
@@ -75,7 +75,7 @@ class BaseLLMClient(ABC):
     ) -> AsyncIterator[StreamChunk]: ...
 
     def collect_stream(self, chunks: Iterator[StreamChunk]) -> LLMResponse:
-        from .models import StreamEvent, ToolUse
+        from llm_client.models import StreamEvent, ToolUse
 
         content = ""
         thinking = ""
@@ -108,7 +108,7 @@ class BaseLLMClient(ABC):
         )
 
     async def async_collect_stream(self, chunks: AsyncIterator[StreamChunk]) -> LLMResponse:
-        from .models import StreamEvent, ToolUse
+        from llm_client.models import StreamEvent, ToolUse
 
         content = ""
         thinking = ""

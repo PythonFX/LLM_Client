@@ -9,8 +9,8 @@ from typing import Any, AsyncIterator, Iterator, List, Optional
 
 from mlx_lm.sample_utils import make_sampler
 
-from .base import BaseLLMClient
-from .models import LLMResponse, Message, Messages, StreamChunk, StreamEvent, ToolDef
+from llm_client.base import BaseLLMClient
+from llm_client.models import LLMResponse, Message, Messages, StreamChunk, StreamEvent, ToolDef
 
 THINK_START = "<|channel>thought"
 THINK_END = "<channel|>"

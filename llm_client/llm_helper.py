@@ -1,6 +1,6 @@
 import httpx
 
-from .llm_factory import get_profile
+from llm_client.llm_factory import get_profile
 
 
 def get_azure_ad_token(profile_name: str = "azure") -> str:

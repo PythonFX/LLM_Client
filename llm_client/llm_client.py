@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from typing import Any, AsyncIterator, Dict, Iterator, List, Optional, Union
 
-from .base import BaseLLMClient
-from .models import LLMResponse, Message, Messages, Provider, StreamChunk, ToolDef
+from llm_client.base import BaseLLMClient
+from llm_client.models import LLMResponse, Message, Messages, Provider, StreamChunk, ToolDef
 
 
 def _resolve_key(value: Union[Provider, str]) -> str:

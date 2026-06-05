@@ -5,8 +5,8 @@ from typing import Any, AsyncIterator, Dict, Iterator, List, Optional
 
 import httpx
 
-from .base import BaseLLMClient
-from .models import LLMResponse, Message, Messages, StreamChunk, StreamEvent, ToolDef, ToolUse
+from llm_client.base import BaseLLMClient
+from llm_client.models import LLMResponse, Message, Messages, StreamChunk, StreamEvent, ToolDef, ToolUse
 
 
 class AnthropicClient(BaseLLMClient):

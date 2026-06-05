@@ -3,15 +3,15 @@ from typing import TYPE_CHECKING, Any, Dict, Optional, Union
 
 import yaml
 
-from .anthropic_client import AnthropicClient
-from .azure_client import AzureClient
-from .base import BaseLLMClient
-from .llm_client import LLMClient
-from .models import Provider
-from .openai_client import OpenAIClient
+from llm_client.anthropic_client import AnthropicClient
+from llm_client.azure_client import AzureClient
+from llm_client.base import BaseLLMClient
+from llm_client.llm_client import LLMClient
+from llm_client.models import Provider
+from llm_client.openai_client import OpenAIClient
 
 if TYPE_CHECKING:
-    from .mlx_client import MlxClient
+    from llm_client.mlx_client import MlxClient
 
 _DEFAULT_CONFIG_PATH = Path.home() / ".llm_client_models.yaml"
 
@@ -88,7 +88,7 @@ def create_azure_client(
             timeout=timeout,
         )
 
-    from .llm_helper import get_azure_ad_token
+    from llm_client.llm_helper import get_azure_ad_token
 
     return AzureClient(
         deployment=p["deployment"],
@@ -105,7 +105,7 @@ def create_azure_client_ad_token(
     **overrides: Any,
 ) -> AzureClient:
     p = get_profile(profile_name) | overrides
-    from .llm_helper import get_azure_ad_token
+    from llm_client.llm_helper import get_azure_ad_token
     return AzureClient(
         deployment=p["deployment"],
         endpoint=p["endpoint"],
@@ -167,11 +167,27 @@ def create_kimi_client(
     )
 
 
+def create_step_client(
+    profile_name: str = "step",
+    timeout: float = 300.0,
+    **overrides: Any,
+) -> AnthropicClient:
+    p = get_profile(profile_name) | overrides
+    return AnthropicClient(
+        api_key=p["api_key"],
+        base_url=p.get("base_url"),
+        model=p.get("model"),
+        auth_mode=p.get("auth_mode", "bearer"),
+        thinking=p.get("thinking"),
+        timeout=timeout,
+    )
+
+
 def create_mlx_client(
     profile_name: str = "gemma4-e4b",
     **overrides: Any,
 ) -> "MlxClient":
-    from .mlx_client import MlxClient
+    from llm_client.mlx_client import MlxClient
 
     p = get_profile(profile_name) | overrides
     return MlxClient(
@@ -264,7 +280,7 @@ def _create_client_from_profile(
                 timeout=timeout,
             )
 
-        from .llm_helper import get_azure_ad_token
+        from llm_client.llm_helper import get_azure_ad_token
 
         profile_name = profile.get("_name", "azure")
         return AzureClient(
@@ -284,7 +300,7 @@ def _create_client_from_profile(
             timeout=timeout,
         )
     elif provider == "mlx":
-        from .mlx_client import MlxClient
+        from llm_client.mlx_client import MlxClient
 
         return MlxClient(
             model_path=profile["model_path"],
