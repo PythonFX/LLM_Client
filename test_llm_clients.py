@@ -46,7 +46,7 @@ MAX_TOKENS = 1024
 HAS_API = bool(_profiles.get("minimax-anthropic", {}).get("api_key"))
 HAS_DOUBAO = bool(_profiles.get("doubao-glm", {}).get("api_key"))
 HAS_ZHIPU = bool(_profiles.get("zhipu-glm", {}).get("api_key"))
-HAS_KIMI = bool(_profiles.get("kimi-k26", {}).get("api_key"))
+HAS_KIMI = bool(_profiles.get("kimi", {}).get("api_key"))
 HAS_MLX = os.path.exists("/Users/vincent/.lmstudio/models/lmstudio-community/gemma-4-E4B-it-MLX-4bit")
 
 
@@ -1100,7 +1100,7 @@ def test_kimi_completion():
         print("=== Kimi completion === SKIP (no kimi profile)")
         return
     print("=== Kimi completion ===")
-    with create_kimi_client(profile_name="kimi-k26") as client:
+    with create_kimi_client(profile_name="kimi") as client:
         resp = client.completion(
             messages=[Message(role="user", content="Say hello in one sentence.")],
             max_tokens=MAX_TOKENS,
@@ -1116,7 +1116,7 @@ def test_kimi_stream():
         print("=== Kimi stream === SKIP (no kimi profile)")
         return
     print("=== Kimi stream ===")
-    with create_kimi_client(profile_name="kimi-k26") as client:
+    with create_kimi_client(profile_name="kimi") as client:
         chunks = client.stream(
             messages=[Message(role="user", content="Count from 1 to 3.")],
             max_tokens=MAX_TOKENS,
